@@ -1,4 +1,5 @@
 import streamlit as st
+from auth import require_auth, render_subscription_banner, sign_out, is_subscribed
 
 st.set_page_config(
     page_title="JobAgent AI",
@@ -6,6 +7,18 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ── Auth gate — must come before any other st.* calls ─────────
+user, sub = require_auth()
+
+# Block access if subscription expired
+if user and sub and not is_subscribed(sub):
+    st.error("⚠️ Your subscription has expired.")
+    st.markdown("### ₹49/month — Renew your Pro Plan")
+    st.info("💳 Add your Razorpay / Stripe payment link in `auth.py` upgrade buttons.")
+    if st.button("Sign Out"):
+        sign_out()
+    st.stop()
 
 # Custom CSS — Bloomberg Terminal meets FP&A precision
 st.markdown("""
@@ -165,6 +178,19 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
+    # Show user email if logged in
+    if user:
+        email_display = user.get("email", "")
+        st.markdown(f"""
+        <div style='font-family: JetBrains Mono, monospace; font-size: 11px; color: #5a7090;
+             background:#0d1120; border:1px solid #1e2d4a; border-radius:6px;
+             padding: 8px 10px; margin-bottom:12px; overflow:hidden; text-overflow:ellipsis;'>
+            👤 {email_display}
+        </div>
+        """, unsafe_allow_html=True)
+        # Subscription banner
+        render_subscription_banner(sub)
+
     page = st.radio("", [
         "🏠  Dashboard",
         "📄  Resume & Prefs",
@@ -174,6 +200,11 @@ with st.sidebar:
         "📊  Applications Log",
         "⚙️  Settings"
     ], label_visibility="collapsed")
+
+    if user:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🚪 Sign Out", key="signout_btn"):
+            sign_out()
 
 # Route pages
 page_key = page.split("  ")[-1].strip()

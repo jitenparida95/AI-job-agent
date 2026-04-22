@@ -414,21 +414,78 @@ def scrape_foundit(keywords: list, locations: list, max_jobs: int = 25) -> list:
 
 
 def _make_driver(headless=True):
+    """
+    Create a Selenium Chrome driver.
+    Handles three environments:
+      1. Streamlit Cloud / Linux servers  — uses the system chromium-browser + chromedriver
+      2. Local Windows/Mac with Chrome    — uses webdriver-manager to auto-download chromedriver
+      3. Fallback                         — raises a clear error with install instructions
+    """
+    import os, shutil, subprocess
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
-    from webdriver_manager.chrome import ChromeDriverManager
     from selenium.webdriver.chrome.service import Service
-    opts = Options()
-    if headless:
-        opts.add_argument("--headless=new")
-    opts.add_argument("--no-sandbox")
-    opts.add_argument("--disable-dev-shm-usage")
-    opts.add_argument("--disable-blink-features=AutomationControlled")
-    opts.add_experimental_option("excludeSwitches", ["enable-automation"])
-    opts.add_experimental_option("useAutomationExtension", False)
-    opts.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-    service = Service(ChromeDriverManager().install())
-    return webdriver.Chrome(service=service, options=opts)
+
+    def _build_opts():
+        opts = Options()
+        if headless:
+            opts.add_argument("--headless=new")
+        opts.add_argument("--no-sandbox")
+        opts.add_argument("--disable-dev-shm-usage")
+        opts.add_argument("--disable-gpu")
+        opts.add_argument("--window-size=1920,1080")
+        opts.add_argument("--remote-debugging-port=9222")
+        opts.add_argument("--disable-blink-features=AutomationControlled")
+        opts.add_experimental_option("excludeSwitches", ["enable-automation"])
+        opts.add_experimental_option("useAutomationExtension", False)
+        opts.add_argument(
+            "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        )
+        return opts
+
+    # ── Strategy 1: system chromium (Streamlit Cloud / Ubuntu) ──
+    chromium_bin = shutil.which("chromium-browser") or shutil.which("chromium") or shutil.which("google-chrome")
+    chromedriver_bin = shutil.which("chromedriver")
+    if chromium_bin and chromedriver_bin:
+        opts = _build_opts()
+        opts.binary_location = chromium_bin
+        service = Service(chromedriver_bin)
+        return webdriver.Chrome(service=service, options=opts)
+
+    # ── Strategy 2: webdriver-manager (local dev) ───────────────
+    try:
+        from webdriver_manager.chrome import ChromeDriverManager
+        opts = _build_opts()
+        service = Service(ChromeDriverManager().install())
+        return webdriver.Chrome(service=service, options=opts)
+    except Exception as wdm_err:
+        pass
+
+    # ── Strategy 3: try installing chromium on the fly (Linux) ──
+    try:
+        if os.name != "nt":  # not Windows
+            subprocess.run(
+                ["apt-get", "install", "-y", "chromium-browser", "chromium-chromedriver"],
+                capture_output=True, timeout=120,
+            )
+            chromium_bin = shutil.which("chromium-browser") or shutil.which("chromium")
+            chromedriver_bin = shutil.which("chromedriver")
+            if chromium_bin and chromedriver_bin:
+                opts = _build_opts()
+                opts.binary_location = chromium_bin
+                service = Service(chromedriver_bin)
+                return webdriver.Chrome(service=service, options=opts)
+    except Exception:
+        pass
+
+    raise RuntimeError(
+        "Chrome/ChromeDriver not found.\n\n"
+        "On Streamlit Cloud add to packages.txt:\n"
+        "  chromium-browser\n  chromium-chromedriver\n\n"
+        "Locally run:\n"
+        "  pip install webdriver-manager selenium"
+    )
 
 
 # ── Master function ───────────────────────────────────────────
