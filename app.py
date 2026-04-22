@@ -14,11 +14,27 @@ user, sub = require_auth()
 # Block access if subscription expired
 if user and sub and not is_subscribed(sub):
     st.error("⚠️ Your subscription has expired.")
-    st.markdown("### ₹49/month — Renew your Pro Plan")
-    st.info("💳 Add your Razorpay / Stripe payment link in `auth.py` upgrade buttons.")
+    st.markdown("### Renew your Pro Plan — ₹49/month")
+    st.link_button("⚡ Renew Now", "https://rzp.io/rzp/StnjPRq")
     if st.button("Sign Out"):
         sign_out()
     st.stop()
+
+# ── Inject API keys from Streamlit secrets so users don't need to enter them ──
+try:
+    from core.store import get_settings, save_settings
+    _s = get_settings()
+    _changed = False
+    if not _s.get("groq_api_key") and st.secrets.get("GROQ_API_KEY"):
+        _s["groq_api_key"] = st.secrets["GROQ_API_KEY"]
+        _changed = True
+    if not _s.get("jsearch_api_key") and st.secrets.get("JSEARCH_API_KEY"):
+        _s["jsearch_api_key"] = st.secrets["JSEARCH_API_KEY"]
+        _changed = True
+    if _changed:
+        save_settings(_s)
+except Exception:
+    pass
 
 # Custom CSS — Bloomberg Terminal meets FP&A precision
 st.markdown("""
@@ -194,6 +210,7 @@ with st.sidebar:
     page = st.radio("", [
         "🏠  Dashboard",
         "📄  Resume & Prefs",
+        "✨  Resume Rewriter",
         "🔍  Job Discovery",
         "🤖  AI Matching",
         "🚀  Auto Apply",
@@ -221,5 +238,7 @@ elif page_key == "Auto Apply":
     from pages import apply; apply.render()
 elif page_key == "Applications Log":
     from pages import log; log.render()
+elif page_key == "Resume Rewriter":
+    from pages import resume_rewriter; resume_rewriter.render()
 elif page_key == "Settings":
     from pages import settings; settings.render()
