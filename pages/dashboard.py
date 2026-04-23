@@ -10,7 +10,8 @@ def render():
     tracker = get_tracker()
     settings = get_settings()
     all_tracked = applied + tracker
-    name = prefs.get("name", "").split()[0] or "there"
+    _name_parts = prefs.get("name", "").strip().split()
+    name = _name_parts[0] if _name_parts else "there"
 
     hour = datetime.now().hour
     greeting = "Good morning" if hour < 12 else ("Good afternoon" if hour < 17 else "Good evening")
