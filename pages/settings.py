@@ -1,225 +1,157 @@
 import streamlit as st
-from core.store import get_settings, save_settings
-
-RAZORPAY_LINK = "https://rzp.io/rzp/StnjPRq"
+from core.store import get_settings, save_settings, get_prefs
 
 
 def render():
     settings = get_settings()
+    prefs    = get_prefs()
 
-    st.markdown("""<div style='padding: 8px 0 24px;'>
-        <div style='font-family: JetBrains Mono, monospace; font-size: 11px; color: #3d5a80; letter-spacing: 0.1em;'>CONFIG</div>
-        <h1 style='font-size: 28px; margin: 4px 0 0; color: #e8eaf0;'>Settings</h1>
+    st.markdown("""<div style='padding: 8px 0 28px;'>
+        <div style='font-family: JetBrains Mono, monospace; font-size: 10px; color: #2d4060; letter-spacing: 0.2em;'>CONFIGURATION</div>
+        <h1 style='font-size: 30px; font-weight: 800; margin: 4px 0 6px; color: #e2e8f0;'>Settings</h1>
+        <p style='color: #4a6080; font-size: 14px; margin: 0;'>Configure your API keys, portal credentials, and automation preferences.</p>
     </div>""", unsafe_allow_html=True)
 
-    tab1, tab2, tab3, tab4 = st.tabs(["🔐 Job Portals", "⚙️ Agent Config", "🔧 Browser", "🤖 AI Resume Update"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🔑 API Keys", "🌐 Job Portals", "⚙️ Automation", "💳 Plan"])
 
-    # ── TAB 1: Job Portal Credentials only (no API keys shown to user) ──
     with tab1:
-        st.markdown('<div class="section-header">NAUKRI.COM LOGIN</div>', unsafe_allow_html=True)
-        st.caption("Your credentials are stored locally and never shared.")
+        st.markdown('<div class="section-header">AI ENGINE</div>', unsafe_allow_html=True)
+        groq_key = st.text_input(
+            "Groq API Key",
+            value=settings.get("groq_api_key", ""),
+            type="password",
+            help="Powers Career Intelligence, Resume Optimizer, and all AI generation. Free at console.groq.com"
+        )
+        st.caption("Get your free key at [console.groq.com](https://console.groq.com) — no credit card required.")
+
+        st.markdown('<div class="section-header">JOB SEARCH API</div>', unsafe_allow_html=True)
+        jsearch_key = st.text_input(
+            "JSearch API Key (RapidAPI)",
+            value=settings.get("jsearch_api_key", ""),
+            type="password",
+            help="Enables Job Discovery from LinkedIn, Indeed, Glassdoor via API."
+        )
+        st.caption("Get key at [rapidapi.com/jsearch](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch).")
+
+        if st.button("💾 Save API Keys", use_container_width=True):
+            settings["groq_api_key"]    = groq_key
+            settings["jsearch_api_key"] = jsearch_key
+            save_settings(settings)
+            st.success("✓ API keys saved")
+
+        if groq_key:
+            st.markdown("""<div class="insight-card success">
+                <div style='font-size:13px; color:#22d3a5; font-weight:600;'>✓ AI Engine Active</div>
+                <div style='font-size:12px; color:#7a8faa; margin-top:4px;'>Career Intelligence, Resume Optimizer, Application Engine, and AI Coach are all powered on.</div>
+            </div>""", unsafe_allow_html=True)
+        else:
+            st.markdown("""<div class="insight-card warning">
+                <div style='font-size:13px; color:#fbbf24; font-weight:600;'>⚠️ AI Engine Offline</div>
+                <div style='font-size:12px; color:#7a8faa; margin-top:4px;'>Add your Groq API key to unlock Career Intelligence, ATS scoring, and personalized content generation.</div>
+            </div>""", unsafe_allow_html=True)
+
+    with tab2:
+        st.markdown('<div class="section-header">PORTAL CREDENTIALS</div>', unsafe_allow_html=True)
+
         c1, c2 = st.columns(2)
         with c1:
-            settings["naukri_email"] = st.text_input("Naukri email", value=settings.get("naukri_email", ""))
+            st.markdown("**Naukri**")
+            naukri_email = st.text_input("Naukri Email", value=settings.get("naukri_email", ""), key="naukri_email")
+            naukri_pass  = st.text_input("Naukri Password", value=settings.get("naukri_password", ""), type="password", key="naukri_pass")
         with c2:
-            settings["naukri_password"] = st.text_input("Naukri password", value=settings.get("naukri_password", ""), type="password")
+            st.markdown("**LinkedIn**")
+            li_email = st.text_input("LinkedIn Email", value=settings.get("linkedin_email", ""), key="li_email")
+            li_pass  = st.text_input("LinkedIn Password", value=settings.get("linkedin_password", ""), type="password", key="li_pass")
 
-        st.markdown('<div class="section-header">LINKEDIN LOGIN</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">ACTIVE PORTALS</div>', unsafe_allow_html=True)
+        portal_options = ["naukri", "linkedin", "instahyre", "foundit", "wellfound", "remotive", "internshala"]
+        active_portals = st.multiselect(
+            "Portals to search",
+            portal_options,
+            default=settings.get("portals", ["naukri", "linkedin"])
+        )
+
+        if st.button("💾 Save Portal Settings", use_container_width=True):
+            settings.update({
+                "naukri_email": naukri_email, "naukri_password": naukri_pass,
+                "linkedin_email": li_email,   "linkedin_password": li_pass,
+                "portals": active_portals,
+            })
+            save_settings(settings)
+            st.success("✓ Portal settings saved")
+
+    with tab3:
+        st.markdown('<div class="section-header">AUTO-APPLY CONTROLS</div>', unsafe_allow_html=True)
+
         c1, c2 = st.columns(2)
         with c1:
-            settings["linkedin_email"] = st.text_input("LinkedIn email", value=settings.get("linkedin_email", ""))
+            min_match    = st.slider("Minimum match score to auto-apply (%)", 50, 95,
+                                     value=settings.get("min_match_score", 70), step=5)
+            daily_limit  = st.number_input("Daily application limit", min_value=1, max_value=100,
+                                            value=settings.get("daily_apply_limit", 30))
         with c2:
-            settings["linkedin_password"] = st.text_input("LinkedIn password", value=settings.get("linkedin_password", ""), type="password")
+            auto_apply   = st.toggle("Enable Auto-Apply", value=settings.get("auto_apply_enabled", False))
+            headless     = st.toggle("Headless browser mode", value=settings.get("headless_browser", True))
 
-        st.markdown("""<div style='background:#1a1000; border:1px solid #f59e0b33; border-radius:8px; padding:12px 16px; margin-top:8px;'>
-            <div style='color:#f59e0b; font-size:11px; font-family: JetBrains Mono, monospace;'>⚠ CREDENTIALS STORED LOCALLY</div>
-            <div style='color:#8a6a30; font-size:12px; margin-top:4px;'>Saved to ~/.jobagent/settings.json on your machine only. Never uploaded or shared.</div>
+        st.markdown("""<div class="insight-card warning" style='margin-top:12px;'>
+            <div style='font-size:13px; color:#fbbf24; font-weight:600;'>⚠️ Auto-Apply Safety Guidelines</div>
+            <div style='font-size:12px; color:#7a8faa; margin-top:4px;'>Set a high match threshold (≥75%) before enabling auto-apply. Always review applications in the Tracker. Portals may flag rapid automated submissions.</div>
         </div>""", unsafe_allow_html=True)
 
-        # Subscription / upgrade section
-        st.markdown('<div class="section-header">SUBSCRIPTION</div>', unsafe_allow_html=True)
-        sub = st.session_state.get("subscription")
-        if sub and sub.get("status") == "trial":
-            from auth import days_left
-            d = days_left(sub)
-            st.markdown(f"""<div style='background:#111827; border:1px solid #22d3a5; border-radius:8px; padding:16px; margin-bottom:12px;'>
-                <div style='font-family: JetBrains Mono, monospace; font-size:13px; color:#22d3a5;'>🎁 FREE TRIAL — {d} day{"s" if d!=1 else ""} left</div>
-                <div style='font-size:12px; color:#5a7090; margin-top:6px;'>Upgrade to Pro for ₹49/month to keep full access after your trial ends.</div>
-            </div>""", unsafe_allow_html=True)
-            st.link_button("⚡ Upgrade to Pro — ₹49/month", RAZORPAY_LINK)
-        elif sub and sub.get("status") == "active":
-            st.success("✓ Pro plan active")
-        else:
-            st.link_button("⚡ Subscribe — ₹49/month", RAZORPAY_LINK)
+        if st.button("💾 Save Automation Settings", use_container_width=True):
+            settings.update({
+                "min_match_score":    min_match,
+                "daily_apply_limit":  daily_limit,
+                "auto_apply_enabled": auto_apply,
+                "headless_browser":   headless,
+            })
+            save_settings(settings)
+            st.success("✓ Automation settings saved")
 
-    # ── TAB 2: Agent Config ──
-    with tab2:
-        st.markdown('<div class="section-header">MATCHING</div>', unsafe_allow_html=True)
-        settings["min_match_score"] = st.slider(
-            "Minimum match score to apply (%)", 40, 95,
-            value=settings.get("min_match_score", 70), step=5,
-        )
-
-        st.markdown('<div class="section-header">APPLY LIMITS</div>', unsafe_allow_html=True)
-        settings["daily_apply_limit"] = st.number_input(
-            "Max applications per day", value=settings.get("daily_apply_limit", 30),
-            min_value=1, max_value=100,
-        )
-
-        st.markdown('<div class="section-header">PORTALS TO SEARCH</div>', unsafe_allow_html=True)
-        all_portals = ["naukri", "linkedin", "instahyre", "foundit", "wellfound", "remotive"]
-        current = settings.get("portals", all_portals)
-        selected = []
-        cols = st.columns(3)
-        for i, p in enumerate(all_portals):
-            with cols[i % 3]:
-                if st.checkbox(p.capitalize(), value=p in current, key=f"sett_portal_{p}"):
-                    selected.append(p)
-        settings["portals"] = selected
-
-        st.markdown('<div class="section-header">AUTO-APPLY</div>', unsafe_allow_html=True)
-        settings["auto_apply_enabled"] = st.toggle(
-            "Enable fully automated apply",
-            value=settings.get("auto_apply_enabled", False),
-        )
-
-    # ── TAB 3: Browser ──
-    with tab3:
-        st.markdown('<div class="section-header">SELENIUM BROWSER</div>', unsafe_allow_html=True)
-        settings["headless_browser"] = st.toggle(
-            "Run browser headless (invisible)",
-            value=settings.get("headless_browser", True),
-        )
-        st.caption("Turn OFF to watch the browser and solve CAPTCHAs manually on first run.")
-
-    # ── TAB 4: AI Resume Update ──
     with tab4:
-        st.markdown('<div class="section-header">AI-POWERED RESUME UPDATER</div>', unsafe_allow_html=True)
-        st.markdown("""<p style='color:#5a7090; font-size:13px; margin-bottom:16px;'>
-            Paste a job description and let AI rewrite your resume summary and skills section
-            to better match the role — without changing your actual experience.
-        </p>""", unsafe_allow_html=True)
-
-        from core.store import get_prefs, save_prefs
-        prefs = get_prefs()
-
-        groq_key = settings.get("groq_api_key", "") or st.secrets.get("GROQ_API_KEY", "")
-
-        if not groq_key:
-            st.warning("⚠️ No Groq API key configured. Contact support or add GROQ_API_KEY to secrets.")
+        tier = settings.get("tier", "free")
+        if tier == "pro":
+            st.markdown("""<div style='background:linear-gradient(135deg,#052e16,#0f2d1a); border:1px solid #166534; border-radius:12px; padding:24px; text-align:center; margin-bottom:20px;'>
+                <div style='font-size:24px; font-weight:800; color:#22d3a5; margin-bottom:6px;'>✓ CareerOS Pro</div>
+                <div style='font-size:14px; color:#7a8faa;'>All modules active. Full AI intelligence unlocked.</div>
+            </div>""", unsafe_allow_html=True)
         else:
-            jd_input = st.text_area(
-                "Paste the Job Description here",
-                height=200,
-                placeholder="Paste the full job description of the role you want to tailor your resume for..."
-            )
+            st.markdown("""<div class="upgrade-banner">
+                <div style='font-size:22px; font-weight:800; color:#e2e8f0; margin-bottom:6px;'>Upgrade to CareerOS Pro</div>
+                <div style='font-size:14px; color:#a5b4fc; margin-bottom:16px;'>Unlock full AI Career Intelligence, unlimited applications, and priority coaching.</div>
+                <div style='display:flex; justify-content:center; gap:30px; margin-bottom:16px;'>
+                    <div style='text-align:center;'><div style='font-size:13px; color:#22d3a5;'>✓</div><div style='font-size:12px; color:#7a8faa;'>Career Intelligence</div></div>
+                    <div style='text-align:center;'><div style='font-size:13px; color:#22d3a5;'>✓</div><div style='font-size:12px; color:#7a8faa;'>Resume Optimizer</div></div>
+                    <div style='text-align:center;'><div style='font-size:13px; color:#22d3a5;'>✓</div><div style='font-size:12px; color:#7a8faa;'>AI Coach Chat</div></div>
+                    <div style='text-align:center;'><div style='font-size:13px; color:#22d3a5;'>✓</div><div style='font-size:12px; color:#7a8faa;'>Application Engine</div></div>
+                </div>
+                <div style='font-size:28px; font-weight:800; color:#e2e8f0; margin-bottom:4px;'>₹499<span style="font-size:14px; color:#7a8faa;">/month</span></div>
+            </div>""", unsafe_allow_html=True)
+            st.link_button("🚀 Unlock CareerOS Pro — ₹499/month", "https://rzp.io/rzp/StnjPRq", use_container_width=True)
 
-            current_resume = prefs.get("resume_text", "")
-            if current_resume:
-                st.markdown(f"""<div style='background:#111827; border:1px solid #1e2d4a; border-radius:6px;
-                    padding:10px 14px; font-size:12px; color:#5a7090; margin-bottom:12px;'>
-                    📄 Current resume: <span style='color:#22d3a5;'>{prefs.get("resume_path","uploaded")} · {len(current_resume.split())} words</span>
-                </div>""", unsafe_allow_html=True)
-            else:
-                st.warning("No resume loaded yet. Go to Resume & Prefs to upload your PDF first.")
-
-            col1, col2 = st.columns(2)
-            with col1:
-                update_summary = st.checkbox("Rewrite professional summary", value=True)
-            with col2:
-                update_skills = st.checkbox("Optimize skills/keywords section", value=True)
-
-            if st.button("🤖 Generate AI-Optimized Resume Section", disabled=not jd_input or not current_resume):
-                with st.spinner("AI is tailoring your resume to the job description..."):
-                    result = _ai_resume_update(
-                        resume_text=current_resume,
-                        jd_text=jd_input,
-                        prefs=prefs,
-                        groq_key=groq_key,
-                        update_summary=update_summary,
-                        update_skills=update_skills,
-                    )
-
-                if result.get("success"):
-                    st.markdown('<div class="section-header">AI-GENERATED CONTENT</div>', unsafe_allow_html=True)
-
-                    if result.get("summary"):
-                        st.markdown("**✨ Optimized Professional Summary**")
-                        summary_val = st.text_area("", value=result["summary"], height=150, key="ai_summary")
-                        if st.button("✓ Apply this summary to my profile"):
-                            prefs["ai_summary"] = summary_val
-                            prefs["cover_letter_template"] = summary_val + "\n\n" + prefs.get("cover_letter_template", "")
-                            save_prefs(prefs)
-                            st.success("Summary saved to your profile!")
-
-                    if result.get("keywords"):
-                        st.markdown("**🎯 Recommended Keywords to Add**")
-                        st.markdown(f"""<div style='background:#0f3a2a; border:1px solid #22d3a5; border-radius:8px;
-                            padding:12px 16px; font-family: JetBrains Mono, monospace; font-size:12px; color:#22d3a5;'>
-                            {" · ".join(result["keywords"])}
-                        </div>""", unsafe_allow_html=True)
-                        if st.button("✓ Add these keywords to my profile"):
-                            existing = prefs.get("keywords", [])
-                            new_kws = [k for k in result["keywords"] if k not in existing]
-                            prefs["keywords"] = existing + new_kws
-                            save_prefs(prefs)
-                            st.success(f"Added {len(new_kws)} new keywords!")
-
-                    if result.get("match_tips"):
-                        st.markdown("**💡 Tips to improve your match score**")
-                        for tip in result["match_tips"]:
-                            st.markdown(f"- {tip}")
-                else:
-                    st.error(f"AI update failed: {result.get('error')}")
-
-    if st.button("💾  Save Settings"):
-        save_settings(settings)
-        st.success("✓ Settings saved")
-
-
-def _ai_resume_update(resume_text, jd_text, prefs, groq_key, update_summary=True, update_skills=True):
-    """Call Groq to generate optimized resume sections."""
-    import json, urllib.request
-    prompt = f"""You are an expert resume writer and ATS optimization specialist.
-
-CANDIDATE'S CURRENT RESUME:
-{resume_text[:2000]}
-
-JOB DESCRIPTION:
-{jd_text[:1500]}
-
-CANDIDATE NAME: {prefs.get('name', '')}
-EXPERIENCE: {prefs.get('experience_years', '')} years
-
-Tasks:
-{"1. Write an optimized 3-4 sentence professional summary that aligns with this JD while staying true to the candidate's actual experience." if update_summary else ""}
-{"2. Extract 10-15 ATS keywords from the JD that the candidate should include in their resume (only ones relevant to their background)." if update_skills else ""}
-3. Give 3 specific tips to improve match score for this role.
-
-Respond ONLY with valid JSON, no markdown backticks:
-{{
-  "summary": "...",
-  "keywords": ["kw1", "kw2", ...],
-  "match_tips": ["tip1", "tip2", "tip3"]
-}}"""
-
-    try:
-        payload = json.dumps({
-            "model": "llama-3.1-8b-instant",
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 1000,
-            "temperature": 0.3,
-        }).encode()
-        req = urllib.request.Request(
-            "https://api.groq.com/openai/v1/chat/completions",
-            data=payload,
-            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-            method="POST"
-        )
-        with urllib.request.urlopen(req, timeout=30) as r:
-            raw = json.loads(r.read())["choices"][0]["message"]["content"]
-        raw = raw.strip().strip("```json").strip("```").strip()
-        data = json.loads(raw)
-        return {"success": True, **data}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+        st.markdown('<div class="section-header">FREE VS PRO</div>', unsafe_allow_html=True)
+        features = [
+            ("Job Discovery & Scraping",         True,  True),
+            ("AI Job Matching (basic)",           True,  True),
+            ("Resume Upload & Parsing",           True,  True),
+            ("Application Tracker",               True,  True),
+            ("Career Intelligence (5 paths)",     False, True),
+            ("Resume ATS Optimizer",              False, True),
+            ("Application Engine (4 formats)",    False, True),
+            ("AI Career Coach",                   False, True),
+            ("Coach Chat (unlimited)",            False, True),
+            ("Resume Rewriter (AI)",              False, True),
+            ("Auto-Apply Automation",             False, True),
+            ("Full Application Package Download", False, True),
+        ]
+        header = f"""<div style='display:grid; grid-template-columns:2fr 1fr 1fr; gap:0; background:#0c1020; border:1px solid #1a2540; border-radius:10px; overflow:hidden;'>
+        <div style='padding:10px 14px; font-size:11px; color:#4a6080; font-family:JetBrains Mono,monospace; border-bottom:1px solid #1a2540;'>FEATURE</div>
+        <div style='padding:10px 14px; font-size:11px; color:#4a6080; font-family:JetBrains Mono,monospace; text-align:center; border-bottom:1px solid #1a2540;'>FREE</div>
+        <div style='padding:10px 14px; font-size:11px; color:#6366f1; font-family:JetBrains Mono,monospace; text-align:center; border-bottom:1px solid #1a2540;'>PRO</div>"""
+        rows = ""
+        for name, free, pro in features:
+            rows += f"""
+        <div style='padding:9px 14px; font-size:12px; color:#e2e8f0; border-bottom:1px solid #1a2540;'>{name}</div>
+        <div style='padding:9px 14px; text-align:center; border-bottom:1px solid #1a2540; color:{"#22d3a5" if free else "#2d4060"};'>{"✓" if free else "—"}</div>
+        <div style='padding:9px 14px; text-align:center; border-bottom:1px solid #1a2540; color:#22d3a5;'>✓</div>"""
+        st.markdown(header + rows + "</div>", unsafe_allow_html=True)

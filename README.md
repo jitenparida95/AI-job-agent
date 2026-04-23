@@ -1,63 +1,60 @@
-# ⚡ JobAgent AI — Automated Job Application Bot
+# 🚀 CareerOS — AI Career Operating System
 
-AI-powered job discovery, matching, and auto-apply agent.  
-Built for FP&A / Finance professionals targeting FMCG GCCs and consulting firms.
+A complete transformation of the AI Job Agent into a premium, 6-module career platform.
 
-## Quick Start
+## What's New
 
-```bash
-# 1. Install dependencies
-pip install -r requirements.txt
+| Module | Description |
+|--------|-------------|
+| 🏠 Command Center | Live dashboard with setup progress, pipeline metrics, readiness checks |
+| 🧠 Career Intelligence | 5 ranked career paths, success probabilities, salary trajectories (Y1/Y3/Y5), skill gap analysis |
+| 📄 Resume Optimizer | ATS score (0-100), percentile ranking, impact rewrites, missing keywords |
+| ✉️ Application Engine | Cover letter, cold email, referral message, LinkedIn DM — all personalized |
+| 📊 Tracker & Analytics | Full pipeline tracker, status updates, conversion funnel, weekly score |
+| 🤖 AI Career Coach | Personalized insights, focus roles, action plan, live chat |
 
-# 2. Run the app
-streamlit run app.py
+## Preserved Modules (upgraded UI)
+
+- ✨ Resume Rewriter
+- 🔍 Job Discovery
+- 🎯 AI Job Matching (+ tier categorization)
+- 🚀 Auto Apply
+- ⚙️ Settings (+ Free vs Pro comparison)
+
+## Setup
+
+1. **Supabase** — Auth still uses Supabase (see original auth.py comments)
+2. **Groq API** — Free at console.groq.com. Powers all AI modules.
+3. **JSearch API** — Optional, for Job Discovery via RapidAPI.
+
+### Streamlit secrets.toml
+
+```toml
+SUPABASE_URL = "https://xxxx.supabase.co"
+SUPABASE_ANON_KEY = "eyJh..."
+GROQ_API_KEY = "gsk_..."
+JSEARCH_API_KEY = "your_rapidapi_key"
 ```
 
-## Setup Order (inside the app)
+## Deploy to Streamlit Cloud
 
-1. **Settings** → Add your Groq API key (free at console.groq.com)
-2. **Settings** → Add Naukri + LinkedIn credentials
-3. **Resume & Prefs** → Upload resume PDF + set target roles, salary, keywords
-4. **Job Discovery** → Select portals → Run scan
-5. **AI Matching** → Score all jobs against your resume
-6. **Auto Apply** → Review the apply queue → Hit Apply Now
+1. Push this folder to GitHub
+2. Connect at share.streamlit.io
+3. Set `app.py` as the main file
+4. Add secrets in the dashboard
 
-## Portal Coverage
+## Data Storage
 
-| Portal | Method | Login needed |
-|--------|--------|-------------|
-| Naukri.com | Internal API + Selenium apply | Yes (for apply) |
-| LinkedIn | Public scrape + Easy Apply | Yes (for apply) |
-| Instahyre | API | No |
-| Foundit | API | No |
-| Wellfound | GraphQL API | No |
-| Remotive | Public API | No |
+All user data stored locally at `~/.careeros/`:
+- `prefs.json` — Profile & preferences
+- `jobs.json` — Job pipeline
+- `applied.json` — Auto-applied log
+- `tracker.json` — Manual tracker entries
+- `career_intel.json` — Career Intelligence cache
+- `settings.json` — API keys & config
 
-## Architecture
+## Monetization
 
-```
-app.py                 ← Streamlit entry point + CSS theme
-├── pages/
-│   ├── dashboard.py   ← Overview + quick actions
-│   ├── resume.py      ← Resume upload + job preferences
-│   ├── discovery.py   ← Multi-portal job scraping
-│   ├── matching.py    ← AI match scoring (Groq/Llama 3.1)
-│   ├── apply.py       ← Bulk auto-apply with Selenium
-│   ├── log.py         ← Application history tracker
-│   └── settings.py    ← Credentials + config
-└── core/
-    ├── store.py        ← JSON-based persistence (~/.jobagent/)
-    ├── scrapers.py     ← Portal scrapers (API + Selenium)
-    ├── ai_engine.py    ← Match scoring + cover letter gen
-    └── apply_bot.py    ← Selenium apply automation
-```
-
-## CAPTCHA Note
-
-On first run, LinkedIn/Naukri may show a CAPTCHA. Go to Settings → turn OFF headless 
-mode → run once → solve the CAPTCHA manually → turn headless back on.
-
-## Data Privacy
-
-All data is stored locally in `~/.jobagent/` — no cloud sync, no third-party sharing.
-Your credentials never leave your machine.
+- **Free tier**: Job Discovery, basic matching, tracker
+- **Pro tier (₹499/mo)**: Career Intelligence, Resume Optimizer, Application Engine, AI Coach
+- Upgrade via Razorpay link in Settings → Plan tab
