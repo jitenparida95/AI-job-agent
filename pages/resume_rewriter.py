@@ -273,7 +273,10 @@ def build_docx(data: dict) -> bytes:
 def render():
     settings = get_settings()
     prefs = get_prefs()
-    groq_key = settings.get("groq_api_key", "") or st.secrets.get("GROQ_API_KEY", "")
+    try:
+        groq_key = settings.get("groq_api_key", "") or st.secrets.get("GROQ_API_KEY", "")
+    except Exception:
+        groq_key = settings.get("groq_api_key", "")
 
     st.markdown("""<div style='padding: 8px 0 24px;'>
         <div style='font-family: JetBrains Mono, monospace; font-size: 11px; color: #3d5a80; letter-spacing: 0.1em;'>AI TOOL</div>
